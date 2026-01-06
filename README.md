@@ -503,3 +503,35 @@ sudo systemctl enable ssh
 sudo systemctl status ssh
 ````
 It should be active(running) and listening on port 22
+
+## keep sc subnet ip address after reboot:
+Debian 12 uses NetworkManager
+
+Check the current ip address and device (which physical ethernet port is associated, e.g. enp129s0)
+````
+$ ip addr
+````
+````
+$ nmcli device status
+DEVICE      TYPE      STATE      CONNECTION
+enp129s0    ethernet  connected  Wired connection 1
+````
+set up profile:
+````
+sudo nmcli connection add \
+  type ethernet \
+  ifname enp129s0 \
+  con-name slow-control \
+  ipv4.method manual \
+  ipv4.addresses 192.168.1.1/24
+````
+bring it up:
+````
+sudo nmcli connection down slow-control 2>/dev/null
+sudo nmcli connection up slow-control
+````
+verify:
+````
+nmcli device status
+ip addr show enp129s0
+````
