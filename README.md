@@ -481,8 +481,6 @@ You can check the last time the database logged an entry on the web interface. N
 ## Backup database
 This can be done however you choose. We provide a simple script (`SC_backend/Docs/backupsql.sh`) that dumps the specified databases into a .sql file and then rsyncs them onto our cluster. We send an email when the process is complete and delete backups older then a specified number of days. Copy this file and put it in the directory that you want it to run from.
 
-Instead of setting up an internal SMTP server to send the emails, it may be easier just to make a gmail account to use the google server to relay emails through mailutil, see: https://medium.com/@FlorenceOkoli/smtp-mailutils-how-to-send-your-mails-via-the-linux-terminal-6d95803a1104.
-
 To have the backup script run at a certain time every day (or whatever interval), set up a cronjob:
 ```
 $ crontab -e
@@ -535,3 +533,84 @@ verify:
 nmcli device status
 ip addr show enp129s0
 ````
+
+## Setup Email SMTP for SC alarm
+Email contents and mailing lists have already been taken care of by the `int send_mail_message(char *address, char *message)` in alarm trigger and alart system in the SC software. So all we need is to set up smtp 
+
+### Goal: 
+Enable this to work for a normal user
+
+`echo "hello" | mail -s "test" someone@example.com`
+
+
+### 0) Prep: Gmail side 
+
+Create a new Gmail account, turn on 2-Step Verification (required for app password).
+
+Create an App Password and copy it.
+
+You will paste this into `/etc/msmtprc` as the password.
+
+If you don’t use an App Password, you’ll often get:
+`535 5.7.8 Username and Password not accepted`. 
+Because the `mail` in Debian 12 OS doesn't support the advanced security required for Gmail.
+
+### 2) Verify wiring (sendmail points to msmtp)
+```
+which mail
+ls -l /usr/sbin/sendmail
+readlink -f /usr/sbin/sendmail
+```
+expected output:
+```
+/usr/bin/mail
+lrwxrwxrwx 1 root root 12 Feb  5  2023 /usr/sbin/sendmail -> ../bin/msmtp
+/usr/bin/msmtp
+```
+
+### 3) Create a dedicated group for reading /etc/msmtprc
+```
+sudo groupadd -f msmtp
+sudo usermod -aG msmtp <YOUR_USERNAME>
+````
+
+### 4) Create /etc/msmtprc (system-wide msmtp config)
+`sudo nano /etc/msmtprc`
+````
+defaults
+auth           on
+tls            on
+tls_starttls   on
+tls_trust_file /etc/ssl/certs/ca-certificates.crt
+
+# Log to the user's home directory (simplifies permissions)
+logfile        /home/<YOUR_USERNAME>/.msmtp.log
+
+account gmail
+host smtp.gmail.com
+port 587
+from <YOUR_GMAIL>@gmail.com
+user <YOUR_GMAIL>@gmail.com
+password <YOUR_GMAIL_APP_PASSWORD>
+
+account default : gmail
+````
+
+Lock down permissions:
+````
+sudo chown root:msmtp /etc/msmtprc
+sudo chmod 640 /etc/msmtprc
+````
+
+### 5) Create the per-user logfile
+````
+touch ~/.msmtp.log
+chmod 600 ~/.msmtp.log
+````
+### 6) Test via `mail`
+`echo "mail test" | mail -s "subject mailx test" <DEST_EMAIL>`
+
+Then check your `<DEST_EMAIL>` inbox and check the log via `tail -n 50 ~/.msmtp.log`
+
+
+
