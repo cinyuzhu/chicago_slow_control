@@ -62,7 +62,7 @@ echo ('<TH align="right">');
 echo ('You are logged in as ' . $_SESSION['user_name']);
 echo (' from ' . $_SERVER['REMOTE_ADDR'] . '.');
 
-if (strpos($_SESSION['privileges'], "guest") !== false) {
+if (isset($_SESSION['privileges']) && $_SESSION['privileges'] === 'guest') {
     echo ('<FORM action="' . $_SERVER['PHP_SELF'] . '" method="post">');
     echo ('<input type="hidden" name="login" value="1">');
     echo ('<TH width="200">');
