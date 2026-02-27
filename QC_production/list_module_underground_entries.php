@@ -127,4 +127,3 @@ if ($_SESSION['choose_type'] == "Summary") {
 mysql_close($connection);
 echo (' </body>');
 echo ('</HTML>');
-?>

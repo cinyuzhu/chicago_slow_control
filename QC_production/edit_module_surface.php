@@ -27,6 +27,7 @@ $req_priv = "full";
 include("db_login.php");
 include("page_setup.php");
 include("aux/array_defs.php"); // Import all array definitions
+include("aux/table_navigation.php");
 
 $table = "MODULE_SURFACE";
 
